@@ -20,6 +20,7 @@ function getJamaahDataServer() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('DATABASE HAJI'); 
+    const laporanSheet = ss.getSheetByName('LAPORAN_BESAR');
     
     if (!sheet) {
       return { success: false, message: "Sheet 'DATABASE HAJI' tidak ditemukan." };
@@ -29,11 +30,40 @@ function getJamaahDataServer() {
     const headers = data[0];
     const rows = data.slice(1);
 
+    const latestStatusMap = {};
+    try {
+      if (laporanSheet) {
+        const lData = laporanSheet.getDataRange().getValues();
+        const lHeaders = (lData && lData.length > 0) ? lData[0] : [];
+        const lRows = (lData && lData.length > 1) ? lData.slice(1) : [];
+        lRows.forEach(r => {
+          const item = {};
+          lHeaders.forEach((h, i) => item[h] = r[i]);
+          const id = item['ID'];
+          if (!id) return;
+          if (!latestStatusMap[id]) latestStatusMap[id] = [];
+          latestStatusMap[id].push({
+            status: item['STATUS'] || 'SEHAT',
+            catatan: item['DIAGNOSA_SAKIT'] || item['LOKASI PEMAKAMAN'] || '',
+            waktu: item['TANGGAL'] || '',
+            linkSertifikat: item['LINK_SERTIFIKAT_KEMATIAN'] || '',
+            lokasiRawat: item['LOKASI RAWAT'] || '',
+            lokasiPemakaman: item['LOKASI PEMAKAMAN'] || ''
+          });
+        });
+      }
+    } catch (laporanError) {
+      // Tetap lanjutkan load data utama meskipun parsing LAPORAN_BESAR bermasalah.
+      Logger.log('Warning LAPORAN_BESAR parse: ' + laporanError);
+    }
+
     const formattedData = rows.map(row => {
       let obj = {};
       headers.forEach((header, index) => {
         obj[header.toString().trim()] = row[index];
       });
+      const history = latestStatusMap[obj['ID']] || [];
+      const last = history[history.length - 1];
       return {
         id: obj['ID'] || '',
         paspor: obj['NO_PASPORT'] || '',
@@ -41,10 +71,12 @@ function getJamaahDataServer() {
         gender: obj['GENDER'] || '',
         umur: obj['UMUR'] || '',
         asal: obj['KABUPATEN'] || '',
-        status: 'SEHAT', // Default status awal
-        diagnosa: '',
-        lokasiRawat: '',
-        lokasiPemakaman: ''
+        status: last ? last.status : 'SEHAT',
+        diagnosa: last ? last.catatan : '',
+        lokasiRawat: last ? last.lokasiRawat : '',
+        lokasiPemakaman: last ? last.lokasiPemakaman : '',
+        linkSertifikat: last ? last.linkSertifikat : '',
+        statusHistory: history
       };
     });
 
@@ -131,6 +163,20 @@ function saveBulkStatusServer(updatedItems) {
     }
 
     return { success: true, message: "Status " + updatedItems.length + " Jemaah berhasil diupdate ke Sheet LAPORAN_BESAR." };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+function uploadCertificateServer(fileObj) {
+  try {
+    const folderId = PropertiesService.getScriptProperties().getProperty('CERT_FOLDER_ID');
+    const folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
+    const bytes = Utilities.base64Decode(fileObj.base64Data);
+    const blob = Utilities.newBlob(bytes, fileObj.mimeType || MimeType.PDF, fileObj.fileName || ('sertifikat_' + Date.now() + '.pdf'));
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return { success: true, url: file.getUrl(), name: file.getName(), id: file.getId() };
   } catch (error) {
     return { success: false, message: error.toString() };
   }

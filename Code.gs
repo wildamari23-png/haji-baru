@@ -95,6 +95,67 @@ function getJamaahDataServer() {
   }
 }
 
+function updateJamaahServer(payload) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('DATABASE HAJI');
+    if (!sheet) return { success: false, message: "Sheet 'DATABASE HAJI' tidak ditemukan." };
+
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0] || [];
+    const idCol = headers.findIndex(h => String(h).trim() === 'ID');
+    if (idCol < 0) return { success: false, message: "Kolom ID tidak ditemukan." };
+
+    const rowIndex = data.findIndex((r, idx) => idx > 0 && String(r[idCol]).trim() === String(payload.id).trim());
+    if (rowIndex < 0) return { success: false, message: "Data jemaah tidak ditemukan." };
+
+    const map = {};
+    headers.forEach((h, i) => map[String(h).trim()] = i);
+    if (map['NAMA_LENGKAP'] >= 0) sheet.getRange(rowIndex + 1, map['NAMA_LENGKAP'] + 1).setValue(payload.nama || '');
+    if (map['NO_PASPORT'] >= 0) sheet.getRange(rowIndex + 1, map['NO_PASPORT'] + 1).setValue(payload.paspor || '');
+    if (map['GENDER'] >= 0) sheet.getRange(rowIndex + 1, map['GENDER'] + 1).setValue(payload.gender || '');
+    if (map['UMUR'] >= 0) sheet.getRange(rowIndex + 1, map['UMUR'] + 1).setValue(payload.umur || '');
+    if (map['KABUPATEN'] >= 0) sheet.getRange(rowIndex + 1, map['KABUPATEN'] + 1).setValue(payload.asal || '');
+
+    return { success: true, message: 'Data jemaah berhasil diperbarui.' };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+function deleteJamaahServer(ids) {
+  try {
+    const idSet = new Set((ids || []).map(String));
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('DATABASE HAJI');
+    if (!sheet) return { success: false, message: "Sheet 'DATABASE HAJI' tidak ditemukan." };
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0] || [];
+    const idCol = headers.findIndex(h => String(h).trim() === 'ID');
+    if (idCol < 0) return { success: false, message: "Kolom ID tidak ditemukan." };
+
+    let deleted = 0;
+    for (let r = data.length - 1; r >= 1; r--) {
+      if (idSet.has(String(data[r][idCol]).trim())) {
+        sheet.deleteRow(r + 1);
+        deleted++;
+      }
+    }
+    return { success: true, message: deleted + ' data jemaah dihapus.' };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+function requestDriveAccessServer() {
+  try {
+    DriveApp.getRootFolder().getId();
+    return { success: true, message: 'Akses Google Drive siap digunakan.' };
+  } catch (error) {
+    return { success: false, message: 'Akses Drive belum tersedia. Jalankan fungsi ini manual di editor GAS untuk memicu otorisasi: ' + error };
+  }
+}
+
 // ==========================================
 // 2. PRESENSI KEGIATAN
 // ==========================================

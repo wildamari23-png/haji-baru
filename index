@@ -154,16 +154,17 @@ function App() {
             setJamaahData(res.data);
             setPresensiSelected(res.data.map(j => j.id));
           } else {
-            setJamaahData(initialJamaah);
-            setPresensiSelected(initialJamaah.map(j => j.id));
+            setJamaahData([]);
+            setPresensiSelected([]);
+            Swal.fire('Data kosong', res?.message || 'Data jemaah tidak ditemukan dari server.', 'warning');
           }
           Swal.close();
         })
         .withFailureHandler((err) => {
           console.error(err);
-          setJamaahData(initialJamaah);
-          setPresensiSelected(initialJamaah.map(j => j.id));
-          Swal.fire('Error', 'Gagal memuat data Jemaah', 'error');
+          setJamaahData([]);
+          setPresensiSelected([]);
+          Swal.fire('Error', 'Gagal memuat data Jemaah dari server', 'error');
         })
         .getJamaahDataServer();
         
@@ -528,7 +529,7 @@ function App() {
 
   const regionFiltered = (list) => selectedKabupaten === 'SEMUA' ? list : list.filter(j => j.asal === selectedKabupaten);
 
-  const filteredJamaah = regionFiltered(jamaahAktif).filter(j =>
+  const filteredJamaah = regionFiltered(jamaahData).filter(j =>
     j.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
     j.paspor.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -905,14 +906,32 @@ function App() {
                   <p className="mt-1 font-medium">Tanggal Rilis: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
                 
-                {/* Rekapitulasi Presensi */}
-                <div className="flex justify-between items-center bg-gray-100 p-4 rounded-xl border border-gray-300 mb-6 font-bold text-sm">
-                   <div>Total Keseluruhan Jemaah: {jamaahData.length} Orang</div>
-                   <div className="text-green-700">Jumlah Hadir / Mengikuti: {presensiSelected.length} Orang</div>
-                   <div className="text-red-700">Tidak Ikut / Sakit / Istirahat: {jamaahData.length - presensiSelected.length} Orang</div>
-                </div>
+                {/* Rekapitulasi Presensi (Format Tabel) */}
+                <h3 className="font-bold text-md mb-2 bg-gray-100 p-2">A. REKAPITULASI PRESENSI</h3>
+                <table className="w-full border-collapse border border-gray-800 mb-6">
+                  <thead>
+                    <tr className="bg-gray-200 font-bold text-xs text-center">
+                      <th className="border border-gray-800 p-2">Kategori</th>
+                      <th className="border border-gray-800 p-2 w-48">Jumlah (Orang)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-xs">
+                    <tr>
+                      <td className="border border-gray-800 p-2">Total Keseluruhan Jemaah</td>
+                      <td className="border border-gray-800 p-2 text-center font-bold">{jamaahData.length}</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-gray-800 p-2">Jumlah Hadir / Mengikuti</td>
+                      <td className="border border-gray-800 p-2 text-center font-bold text-green-700">{presensiSelected.length}</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-gray-800 p-2">Tidak Ikut / Sakit / Istirahat</td>
+                      <td className="border border-gray-800 p-2 text-center font-bold text-red-700">{jamaahData.length - presensiSelected.length}</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-                <h3 className="font-bold text-md mb-2 bg-gray-100 p-2">Rincian Data Jemaah (Hadir/Ikut Kegiatan)</h3>
+                <h3 className="font-bold text-md mb-2 bg-gray-100 p-2">B. Rincian Data Jemaah (Hadir/Ikut Kegiatan)</h3>
                 
                 {presensiData.length === 0 ? (
                   <p className="italic text-gray-500 text-center p-4">Tidak ada data kehadiran yang tercatat.</p>

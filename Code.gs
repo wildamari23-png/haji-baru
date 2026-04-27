@@ -27,6 +27,9 @@ function getJamaahDataServer() {
     }
 
     const data = sheet.getDataRange().getValues();
+    if (!data || data.length <= 1) {
+      return { success: true, data: [] };
+    }
     const headers = data[0];
     const rows = data.slice(1);
 
@@ -42,10 +45,15 @@ function getJamaahDataServer() {
           const id = item['ID'];
           if (!id) return;
           if (!latestStatusMap[id]) latestStatusMap[id] = [];
+          const rawTanggal = item['TANGGAL'] || '';
+          const tanggalText = rawTanggal instanceof Date
+            ? Utilities.formatDate(rawTanggal, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss")
+            : String(rawTanggal);
+
           latestStatusMap[id].push({
             status: item['STATUS'] || 'SEHAT',
             catatan: item['DIAGNOSA_SAKIT'] || item['LOKASI PEMAKAMAN'] || '',
-            waktu: item['TANGGAL'] || '',
+            waktu: tanggalText,
             linkSertifikat: item['LINK_SERTIFIKAT_KEMATIAN'] || '',
             lokasiRawat: item['LOKASI RAWAT'] || '',
             lokasiPemakaman: item['LOKASI PEMAKAMAN'] || ''
@@ -60,7 +68,8 @@ function getJamaahDataServer() {
     const formattedData = rows.map(row => {
       let obj = {};
       headers.forEach((header, index) => {
-        obj[header.toString().trim()] = row[index];
+        if (header === null || header === '') return;
+        obj[String(header).trim()] = row[index];
       });
       const history = latestStatusMap[obj['ID']] || [];
       const last = history[history.length - 1];
@@ -170,7 +179,8 @@ function saveBulkStatusServer(updatedItems) {
 
 function uploadCertificateServer(fileObj) {
   try {
-    const folderId = PropertiesService.getScriptProperties().getProperty('CERT_FOLDER_ID');
+    const defaultFolderId = '1gZTzNB0YvsgR_rgXwFnIR6m5STwSx5aE';
+    const folderId = PropertiesService.getScriptProperties().getProperty('CERT_FOLDER_ID') || defaultFolderId;
     const folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
     const bytes = Utilities.base64Decode(fileObj.base64Data);
     const blob = Utilities.newBlob(bytes, fileObj.mimeType || MimeType.PDF, fileObj.fileName || ('sertifikat_' + Date.now() + '.pdf'));

@@ -606,9 +606,9 @@ function App() {
 
   // --- RENDER MAIN LAYOUT ---
   return (
-    <div className="min-h-screen flex flex-col md:flex-row print:bg-white font-sans bg-[#f4f7f6]">
+    <div className="min-h-screen md:h-screen flex flex-col md:flex-row print:bg-white font-sans bg-[#f4f7f6] md:overflow-hidden">
       {/* SIDEBAR */}
-      <nav className="bg-gray-900 text-gray-300 w-full md:w-64 flex-shrink-0 z-40 print:hidden fixed md:relative bottom-0 md:bottom-auto flex md:flex-col shadow-2xl md:h-screen">
+      <nav className="bg-gray-900 text-gray-300 w-full md:w-64 flex-shrink-0 z-40 print:hidden fixed md:sticky bottom-0 md:top-0 md:bottom-auto flex md:flex-col shadow-2xl md:h-screen">
         <div className="p-6 hidden md:flex items-center gap-3 border-b border-gray-800">
           <div className="bg-gradient-to-br from-green-400 to-emerald-600 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
              {appConfig.headerLogo ? <img src={appConfig.headerLogo} className="w-full h-full object-cover" /> : <i className="fa-solid fa-kaaba text-white"></i>}
@@ -652,7 +652,7 @@ function App() {
       </nav>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto w-full min-h-screen print:p-0 print:h-auto print:overflow-visible">
+      <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto w-full min-h-screen md:h-screen print:p-0 print:h-auto print:overflow-visible">
         
         {/* HEADER */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 print:hidden fade-in-up gap-4">
@@ -720,37 +720,45 @@ function App() {
         {/* --- TAB: DATA JEMAAH --- */}
         {activeTab === 'jamaah' && (
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 md:p-6 fade-in-up print:hidden">
-            <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-              <div className="relative flex-1 max-w-md group">
-                <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-500 transition-colors"></i>
-                <input 
-                  type="text" 
-                  placeholder="Cari Nama atau Paspor..." 
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 focus:bg-white transition-all outline-none font-medium"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+            <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-100 pb-4 mb-4">
+              <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
+                <div className="relative flex-1 max-w-md group">
+                  <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-500 transition-colors"></i>
+                  <input 
+                    type="text" 
+                    placeholder="Cari Nama atau Paspor..." 
+                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 focus:bg-white transition-all outline-none font-medium"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {selectedIds.length > 0 && (
+                    <>
+                      <button 
+                        onClick={() => setShowBulkModal(true)}
+                        className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-5 py-3 rounded-2xl text-sm font-bold shadow-lg shadow-orange-500/30 transition-all"
+                      >
+                        <i className="fa-solid fa-pen-to-square"></i> Update Status ({selectedIds.length})
+                      </button>
+                      <button 
+                        onClick={handleBulkDelete}
+                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-2xl text-sm font-bold shadow-lg shadow-red-500/30 transition-all"
+                      >
+                        <i className="fa-solid fa-trash"></i> Bulk Delete
+                      </button>
+                    </>
+                  )}
+                  <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-5 py-3 rounded-2xl text-sm font-bold shadow-md transition-all">
+                    <i className="fa-solid fa-plus"></i> Tambah
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                {selectedIds.length > 0 && (
-                  <>
-                    <button 
-                      onClick={() => setShowBulkModal(true)}
-                      className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-5 py-3 rounded-2xl text-sm font-bold shadow-lg shadow-orange-500/30 transition-all"
-                    >
-                      <i className="fa-solid fa-pen-to-square"></i> Update Status ({selectedIds.length})
-                    </button>
-                    <button 
-                      onClick={handleBulkDelete}
-                      className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-2xl text-sm font-bold shadow-lg shadow-red-500/30 transition-all"
-                    >
-                      <i className="fa-solid fa-trash"></i> Bulk Delete
-                    </button>
-                  </>
-                )}
-                <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-5 py-3 rounded-2xl text-sm font-bold shadow-md transition-all">
-                  <i className="fa-solid fa-plus"></i> Tambah
-                </button>
+              <div>
+                <select value={selectedKabupaten} onChange={(e) => setSelectedKabupaten(e.target.value)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold outline-none">
+                  <option value="SEMUA">Filter Kabupaten/Kota: Semua</option>
+                  {lokasiAsalList.map((k) => <option key={k} value={k}>{k}</option>)}
+                </select>
               </div>
             </div>
 

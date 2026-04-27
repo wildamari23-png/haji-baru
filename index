@@ -762,6 +762,13 @@ function App() {
               </div>
             </div>
 
+            <div className="mb-4">
+              <select value={selectedKabupaten} onChange={(e) => setSelectedKabupaten(e.target.value)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold outline-none">
+                <option value="SEMUA">Filter Kabupaten/Kota: Semua</option>
+                {lokasiAsalList.map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+
             <div className="overflow-x-auto rounded-2xl border border-gray-100">
               <table className="w-full text-left whitespace-nowrap text-sm">
                 <thead className="bg-gray-50/80 text-gray-500 uppercase tracking-wider text-xs font-bold">

@@ -181,11 +181,21 @@ function uploadCertificateServer(fileObj) {
   try {
     const defaultFolderId = '1gZTzNB0YvsgR_rgXwFnIR6m5STwSx5aE';
     const folderId = PropertiesService.getScriptProperties().getProperty('CERT_FOLDER_ID') || defaultFolderId;
-    const folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
+    let folder = DriveApp.getRootFolder();
+    try {
+      if (folderId) folder = DriveApp.getFolderById(folderId);
+    } catch (folderError) {
+      Logger.log('Folder akses gagal, fallback ke root: ' + folderError);
+    }
     const bytes = Utilities.base64Decode(fileObj.base64Data);
     const blob = Utilities.newBlob(bytes, fileObj.mimeType || MimeType.PDF, fileObj.fileName || ('sertifikat_' + Date.now() + '.pdf'));
     const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (sharingError) {
+      // Pada sebagian domain, setSharing dibatasi admin. File tetap dianggap berhasil tersimpan.
+      Logger.log('setSharing gagal: ' + sharingError);
+    }
     return { success: true, url: file.getUrl(), name: file.getName(), id: file.getId() };
   } catch (error) {
     return { success: false, message: error.toString() };

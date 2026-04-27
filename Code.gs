@@ -31,25 +31,30 @@ function getJamaahDataServer() {
     const rows = data.slice(1);
 
     const latestStatusMap = {};
-    if (laporanSheet) {
-      const lData = laporanSheet.getDataRange().getValues();
-      const lHeaders = lData[0] || [];
-      const lRows = lData.slice(1);
-      lRows.forEach(r => {
-        const item = {};
-        lHeaders.forEach((h, i) => item[h] = r[i]);
-        const id = item['ID'];
-        if (!id) return;
-        if (!latestStatusMap[id]) latestStatusMap[id] = [];
-        latestStatusMap[id].push({
-          status: item['STATUS'] || 'SEHAT',
-          catatan: item['DIAGNOSA_SAKIT'] || item['LOKASI PEMAKAMAN'] || '',
-          waktu: item['TANGGAL'] || '',
-          linkSertifikat: item['LINK_SERTIFIKAT_KEMATIAN'] || '',
-          lokasiRawat: item['LOKASI RAWAT'] || '',
-          lokasiPemakaman: item['LOKASI PEMAKAMAN'] || ''
+    try {
+      if (laporanSheet) {
+        const lData = laporanSheet.getDataRange().getValues();
+        const lHeaders = (lData && lData.length > 0) ? lData[0] : [];
+        const lRows = (lData && lData.length > 1) ? lData.slice(1) : [];
+        lRows.forEach(r => {
+          const item = {};
+          lHeaders.forEach((h, i) => item[h] = r[i]);
+          const id = item['ID'];
+          if (!id) return;
+          if (!latestStatusMap[id]) latestStatusMap[id] = [];
+          latestStatusMap[id].push({
+            status: item['STATUS'] || 'SEHAT',
+            catatan: item['DIAGNOSA_SAKIT'] || item['LOKASI PEMAKAMAN'] || '',
+            waktu: item['TANGGAL'] || '',
+            linkSertifikat: item['LINK_SERTIFIKAT_KEMATIAN'] || '',
+            lokasiRawat: item['LOKASI RAWAT'] || '',
+            lokasiPemakaman: item['LOKASI PEMAKAMAN'] || ''
+          });
         });
-      });
+      }
+    } catch (laporanError) {
+      // Tetap lanjutkan load data utama meskipun parsing LAPORAN_BESAR bermasalah.
+      Logger.log('Warning LAPORAN_BESAR parse: ' + laporanError);
     }
 
     const formattedData = rows.map(row => {

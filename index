@@ -515,6 +515,10 @@ function App() {
   };
 
   const handlePrintPDF = (mode) => {
+    if (mode === 'presensi' && !presensiFilterTanggal) {
+      Swal.fire('Perhatian', 'Pilih filter tanggal terlebih dahulu agar laporan izin kegiatan terunduh per-hari.', 'warning');
+      return;
+    }
     setPrintMode(mode);
     setTimeout(() => {
       window.print();
@@ -634,7 +638,7 @@ function App() {
 
   const regionFiltered = (list) => selectedKabupaten === 'SEMUA' ? list : list.filter(j => j.asal === selectedKabupaten);
 
-  const filteredJamaah = regionFiltered(jamaahData).filter(j =>
+  const filteredJamaah = regionFiltered(jamaahAktif).filter(j =>
     j.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
     j.paspor.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -733,7 +737,7 @@ function App() {
                 {appConfig.adminPhoto ? <img src={appConfig.adminPhoto} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl text-gray-400"><i className="fa-solid fa-user"></i></div>}
               </div>
               <div>
-                <div className="text-xs text-gray-500 font-bold uppercase">Profil Admin</div>
+                <div className="text-xs text-gray-500 font-bold uppercase">PHD LAYANAN UMUM</div>
                 <div className="text-2xl font-extrabold text-gray-800">{appConfig.fullName || currentUser.fullName}</div>
                 <div className="text-sm text-gray-500">@{appConfig.username || 'admin'}</div>
               </div>
@@ -1066,7 +1070,7 @@ function App() {
               <div className="print-area font-sans text-sm p-4 hidden print:block">
                 <div className="text-center border-b-2 border-gray-800 pb-4 mb-6">
                   <h1 className="text-2xl font-bold uppercase tracking-widest">DAFTAR IZIN KEGIATAN {(latestPresensi?.kegiatan || namaKegiatan || '-').toUpperCase()}</h1>
-                  <p className="mt-1 font-medium">PJ: {latestPresensi?.pj || '-'} | No HP: {latestPresensi?.noHpPj || '-'} | Tanggal: {latestPresensi?.tanggal || tglKegiatan}</p>
+                  <p className="mt-1 font-medium">PJ: {latestPresensi?.pj || '-'} | No HP: {latestPresensi?.noHpPj || '-'} | Tanggal: {presensiFilterTanggal || latestPresensi?.tanggal || tglKegiatan}</p>
                 </div>
                 
                 {/* Rekapitulasi Presensi (Format Tabel) */}
@@ -1085,39 +1089,37 @@ function App() {
                     </tr>
                     <tr>
                       <td className="border border-gray-800 p-2">Jumlah Hadir / Mengikuti</td>
-                      <td className="border border-gray-800 p-2 text-center font-bold text-green-700">{presensiSelected.length}</td>
+                      <td className="border border-gray-800 p-2 text-center font-bold text-green-700">{filteredPresensiData.length}</td>
                     </tr>
                     <tr>
                       <td className="border border-gray-800 p-2">Tidak Ikut / Sakit / Istirahat</td>
-                      <td className="border border-gray-800 p-2 text-center font-bold text-red-700">{jamaahData.length - presensiSelected.length}</td>
+                      <td className="border border-gray-800 p-2 text-center font-bold text-red-700">{Math.max(jamaahData.length - filteredPresensiData.length, 0)}</td>
                     </tr>
                   </tbody>
                 </table>
 
                 <h3 className="font-bold text-md mb-2 bg-gray-100 p-2">B. Rincian Data Jemaah (Hadir/Ikut Kegiatan)</h3>
                 
-                {presensiData.length === 0 ? (
+                {filteredPresensiData.length === 0 ? (
                   <p className="italic text-gray-500 text-center p-4">Tidak ada data kehadiran yang tercatat.</p>
                 ) : (
                   <table className="w-full border-collapse border border-gray-800 mb-8">
                     <thead>
                       <tr className="bg-gray-200 font-bold text-xs text-center">
                         <th className="border border-gray-800 p-2">NO</th>
-                        <th className="border border-gray-800 p-2">TANGGAL</th>
                         <th className="border border-gray-800 p-2">KEGIATAN</th>
-                        <th className="border border-gray-800 p-2">ID / PASPOR</th>
+                        <th className="border border-gray-800 p-2">PASPOR</th>
                         <th className="border border-gray-800 p-2">NAMA LENGKAP</th>
                         <th className="border border-gray-800 p-2">GENDER / UMUR</th>
                         <th className="border border-gray-800 p-2">ASAL DAERAH</th>
                       </tr>
                     </thead>
                     <tbody className="text-xs">
-                      {presensiData.map((p, idx) => (
+                      {filteredPresensiData.map((p, idx) => (
                         <tr key={idx}>
                           <td className="border border-gray-800 p-2 text-center">{idx + 1}</td>
-                          <td className="border border-gray-800 p-2 text-center">{p.tanggal}</td>
                           <td className="border border-gray-800 p-2 text-center font-bold">{p.kegiatan}</td>
-                          <td className="border border-gray-800 p-2 text-center">{p.id}<br/>{p.paspor}</td>
+                          <td className="border border-gray-800 p-2 text-center">{p.paspor}</td>
                           <td className="border border-gray-800 p-2 font-bold">{p.nama}</td>
                           <td className="border border-gray-800 p-2 text-center">{p.gender} / {p.umur} Thn</td>
                           <td className="border border-gray-800 p-2 text-center">{p.asal}</td>
@@ -1128,7 +1130,7 @@ function App() {
                 )}
 
                 <div className="mt-12 text-right float-right w-64 text-center">
-                  <p className="mb-16 font-medium">Tertanda,</p>
+                  <p className="font-medium">Tertanda,</p>
                   <p className="font-bold uppercase">Ketua Kloter 18 KAL-BAR</p>
                   <p className="text-sm mt-2 font-bold underline uppercase">{appConfig.signatoryName || '........................'}</p>
                 </div>
@@ -1260,7 +1262,7 @@ Wassalamualaikum warahmatullahi wabarakatuh.`}
                 </table>
                 
                 <div className="mt-16 text-right float-right w-48 text-center">
-                  <p className="mb-16 font-medium">Tertanda,</p>
+                  <p className="font-medium">Tertanda,</p>
                   <p className="font-bold uppercase">Ketua Kloter 18 KAL-BAR</p>
                   <p className="text-sm mt-2 font-bold underline uppercase">{appConfig.signatoryName || '........................'}</p>
                 </div>

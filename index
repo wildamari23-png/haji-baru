@@ -1159,7 +1159,7 @@ function App() {
                 <div id="wa-text" className="bg-white p-5 rounded-2xl text-sm font-mono whitespace-pre-wrap h-[400px] overflow-y-auto border border-gray-200 shadow-inner custom-scrollbar selection:bg-green-200">
 {`Assalamualaikum warahmatullahi wabarakatuh.
 
-📋 *LAPORAN HARIAN JEMAAH HAJI*
+📋 *LAPORAN HARIAN JEMAAH HAJI KLOTER 18 KAL-BAR*
 Tanggal: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
 
 🧭 *Ringkasan Kegiatan:*
@@ -1188,7 +1188,8 @@ ${jamaahData.filter(j => j.status === 'MENINGGAL').length > 0
 • Status Meninggal : ${stats.meninggal}
 
 📌 *Jumlah wafat s/d hari ini:* ${stats.meninggal}
-
+*PHD LAYANAN UMUM*
+*AHMAD MUDASIR,SKM*
 Wassalamualaikum warahmatullahi wabarakatuh.`}
                 </div>
               </div>

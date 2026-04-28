@@ -74,6 +74,7 @@ const initialPjList = [
 function App() {
   // --- STATE MANAGEMENT ---
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState({ role: 'admin', fullName: 'Administrator' });
   const [activeTab, setActiveTab] = useState('dashboard');
   const [jamaahData, setJamaahData] = useState([]);
   const [presensiData, setPresensiData] = useState([]);
@@ -83,8 +84,14 @@ function App() {
   const [appConfig, setAppConfig] = useState({
     appName: 'SIHAJI PRO',
     headerLogo: '',
-    loginLogo: ''
+    loginLogo: '',
+    signatoryName: '........................',
+    fullName: 'Administrator',
+    username: 'admin',
+    password: 'admin123',
+    adminPhoto: ''
   });
+  const [dashboardDate, setDashboardDate] = useState('');
   
   // Login State
   const [username, setUsername] = useState('');
@@ -197,7 +204,20 @@ function App() {
     if (raw) {
       try { setAppConfig(JSON.parse(raw)); } catch (e) {}
     }
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (res?.success && res.data) {
+            setAppConfig(prev => ({ ...prev, ...res.data }));
+          }
+        })
+        .getAppSettingsServer();
+    }
   }, []);
+
+  useEffect(() => {
+    if (currentUser.role === 'viewer' && activeTab !== 'dashboard') setActiveTab('dashboard');
+  }, [currentUser, activeTab]);
 
   // --- LOGIN LOGIC ---
   const handleLogin = (e) => {
@@ -212,6 +232,7 @@ function App() {
           setIsLoading(false);
           if (res?.success) {
             Swal.fire({ icon: 'success', title: 'Login Berhasil', timer: 1500, showConfirmButton: false });
+            setCurrentUser({ role: res.role || 'admin', fullName: res.fullName || appConfig.fullName || 'Administrator' });
             setIsLoggedIn(true);
           } else {
             Swal.fire('Akses Ditolak', res?.message || 'Respons server kosong / tidak valid.', 'error');
@@ -219,8 +240,12 @@ function App() {
         })
         .verifyLoginServer(username, password);
     } else {
-      if (username === 'admin' && password === 'admin123') {
+      if (username === (appConfig.username || 'admin') && password === (appConfig.password || 'admin123')) {
         Swal.fire({ icon: 'success', title: 'Login Berhasil', timer: 1500, showConfirmButton: false });
+        setCurrentUser({ role: 'admin', fullName: appConfig.fullName || 'Administrator' });
+        setIsLoggedIn(true);
+      } else if (username === 'viewer' && password === 'viewer123') {
+        setCurrentUser({ role: 'viewer', fullName: 'Viewer Dashboard' });
         setIsLoggedIn(true);
       } else {
         Swal.fire('Akses Ditolak', 'Username atau password salah! (Hint: admin / admin123)', 'error');
@@ -589,16 +614,23 @@ function App() {
   }
 
   // --- HELPER COMPUTE DATA ---
+  const dashboardData = jamaahData.map((j) => {
+    if (!dashboardDate || !Array.isArray(j.statusHistory) || j.statusHistory.length === 0) return j;
+    const filteredHistory = j.statusHistory.filter(h => String(h.waktu || '').slice(0, 10) <= dashboardDate);
+    const last = filteredHistory[filteredHistory.length - 1];
+    return last ? { ...j, status: last.status || 'SEHAT' } : { ...j, status: 'SEHAT' };
+  });
+
   const stats = {
-    total: jamaahData.length,
-    sehat: jamaahData.filter(j => j.status === 'SEHAT').length,
-    sakit: jamaahData.filter(j => j.status === 'SAKIT').length,
-    meninggal: jamaahData.filter(j => j.status === 'MENINGGAL').length,
+    total: dashboardData.length,
+    sehat: dashboardData.filter(j => j.status === 'SEHAT').length,
+    sakit: dashboardData.filter(j => j.status === 'SAKIT').length,
+    meninggal: dashboardData.filter(j => j.status === 'MENINGGAL').length,
   };
 
   const jamaahAktif = jamaahData.filter(j => j.status !== 'MENINGGAL');
   const jamaahMeninggal = jamaahData.filter(j => j.status === 'MENINGGAL');
-  const kabupatenTersedia = lokasiAsalList.filter(kab => jamaahData.some(j => j.asal === kab));
+  const kabupatenTersedia = lokasiAsalList.filter(kab => dashboardData.some(j => j.asal === kab));
 
   const regionFiltered = (list) => selectedKabupaten === 'SEMUA' ? list : list.filter(j => j.asal === selectedKabupaten);
 
@@ -614,6 +646,7 @@ function App() {
   const filteredPresensiData = presensiData
     .filter(p => !presensiFilterTanggal || p.tanggal === presensiFilterTanggal)
     .filter(p => !presensiSearchNama || p.nama.toLowerCase().includes(presensiSearchNama.toLowerCase()));
+  const latestPresensi = presensiData.length > 0 ? presensiData[presensiData.length - 1] : null;
 
   // --- RENDER MAIN LAYOUT ---
   return (
@@ -632,12 +665,16 @@ function App() {
         
         <div className="flex md:flex-col w-full md:w-auto px-2 py-3 md:p-4 gap-2 md:gap-3 overflow-x-auto md:overflow-visible flex-row justify-around md:justify-start">
           <NavBtn icon="fa-chart-pie" label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-          <NavBtn icon="fa-users" label="Data Jemaah" active={activeTab === 'jamaah'} onClick={() => setActiveTab('jamaah')} />
-          <NavBtn icon="fa-book-skull" label="Data Meninggal" active={activeTab === 'meninggal'} onClick={() => setActiveTab('meninggal')} />
-          <NavBtn icon="fa-calendar-check" label="Presensi" active={activeTab === 'presensi'} onClick={() => setActiveTab('presensi')} />
-          <NavBtn icon="fa-file-lines" label="Laporan" active={activeTab === 'laporan'} onClick={() => setActiveTab('laporan')} />
-          <NavBtn icon="fa-circle-question" label="Panduan" active={activeTab === 'panduan'} onClick={() => setActiveTab('panduan')} />
-          <NavBtn icon="fa-gear" label="Pengaturan" active={activeTab === 'pengaturan'} onClick={() => setActiveTab('pengaturan')} />
+          {currentUser.role !== 'viewer' && (
+            <>
+              <NavBtn icon="fa-users" label="Presensi Harian" active={activeTab === 'jamaah'} onClick={() => setActiveTab('jamaah')} />
+              <NavBtn icon="fa-book-skull" label="Data Meninggal" active={activeTab === 'meninggal'} onClick={() => setActiveTab('meninggal')} />
+              <NavBtn icon="fa-calendar-check" label="Izin Kegiatan" active={activeTab === 'presensi'} onClick={() => setActiveTab('presensi')} />
+              <NavBtn icon="fa-file-lines" label="Laporan" active={activeTab === 'laporan'} onClick={() => setActiveTab('laporan')} />
+              <NavBtn icon="fa-circle-question" label="Panduan" active={activeTab === 'panduan'} onClick={() => setActiveTab('panduan')} />
+              <NavBtn icon="fa-gear" label="Pengaturan" active={activeTab === 'pengaturan'} onClick={() => setActiveTab('pengaturan')} />
+            </>
+          )}
         </div>
 
       </nav>
@@ -657,7 +694,7 @@ function App() {
              <div className="flex items-center gap-2 pr-3 border-r border-gray-100">
                 <div className="w-9 h-9 rounded-xl bg-gray-900 text-white flex items-center justify-center text-xs font-bold">AD</div>
                 <div>
-                  <div className="font-extrabold text-sm text-gray-800">Administrator</div>
+                  <div className="font-extrabold text-sm text-gray-800">{currentUser.fullName || appConfig.fullName || 'Administrator'}</div>
                   <div className="text-[11px] text-gray-500">Akun Aktif</div>
                 </div>
              </div>
@@ -686,6 +723,21 @@ function App() {
         {/* --- TAB: DASHBOARD --- */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6 fade-in-up print:hidden">
+            <div className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-3">
+              <span className="text-sm font-bold text-gray-600">Filter Tanggal Monitoring:</span>
+              <input type="date" value={dashboardDate} onChange={(e) => setDashboardDate(e.target.value)} className="px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold outline-none" />
+              {dashboardDate && <button onClick={() => setDashboardDate('')} className="text-xs bg-gray-100 px-3 py-2 rounded-lg font-bold">Reset</button>}
+            </div>
+            <div className="bg-white rounded-3xl border border-gray-100 p-5 flex items-center gap-4">
+              <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 border">
+                {appConfig.adminPhoto ? <img src={appConfig.adminPhoto} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl text-gray-400"><i className="fa-solid fa-user"></i></div>}
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-bold uppercase">Profil Admin</div>
+                <div className="text-2xl font-extrabold text-gray-800">{appConfig.fullName || currentUser.fullName}</div>
+                <div className="text-sm text-gray-500">@{appConfig.username || 'admin'}</div>
+              </div>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard title="Total Jemaah" value={stats.total} icon="fa-users" color="text-blue-600" bg="bg-blue-100" />
               <StatCard title="Status Sehat" value={stats.sehat} icon="fa-heart-circle-check" color="text-green-600" bg="bg-green-100" />
@@ -711,7 +763,7 @@ function App() {
                   </thead>
                   <tbody className="divide-y divide-gray-100 text-sm">
                     {kabupatenTersedia.map((kab, idx) => {
-                      const kData = jamaahData.filter(j => j.asal === kab);
+                      const kData = dashboardData.filter(j => j.asal === kab);
                       return (
                         <tr key={idx} className="hover:bg-green-50/50 transition-colors">
                           <td className="p-4 font-bold text-gray-700">{kab}</td>
@@ -1013,8 +1065,8 @@ function App() {
             {printMode === 'presensi' && (
               <div className="print-area font-sans text-sm p-4 hidden print:block">
                 <div className="text-center border-b-2 border-gray-800 pb-4 mb-6">
-                  <h1 className="text-2xl font-bold uppercase tracking-widest">Laporan Presensi Kehadiran Jemaah</h1>
-                  <p className="mt-1 font-medium">Tanggal Rilis: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <h1 className="text-2xl font-bold uppercase tracking-widest">DAFTAR IZIN KEGIATAN {(latestPresensi?.kegiatan || namaKegiatan || '-').toUpperCase()}</h1>
+                  <p className="mt-1 font-medium">PJ: {latestPresensi?.pj || '-'} | No HP: {latestPresensi?.noHpPj || '-'} | Tanggal: {latestPresensi?.tanggal || tglKegiatan}</p>
                 </div>
                 
                 {/* Rekapitulasi Presensi (Format Tabel) */}
@@ -1076,9 +1128,9 @@ function App() {
                 )}
 
                 <div className="mt-12 text-right float-right w-64 text-center">
-                  <p className="mb-16">Mengetahui,</p>
-                  <p className="font-bold underline uppercase">Penanggung Jawab (PJ)</p>
-                  <p className="text-xs mt-1">SIHAJI PRO</p>
+                  <p className="mb-16 font-medium">Tertanda,</p>
+                  <p className="font-bold uppercase">Ketua Kloter 18 KAL-BAR</p>
+                  <p className="text-sm mt-2 font-bold underline uppercase">{appConfig.signatoryName || '........................'}</p>
                 </div>
               </div>
             )}
@@ -1208,9 +1260,9 @@ Wassalamualaikum warahmatullahi wabarakatuh.`}
                 </table>
                 
                 <div className="mt-16 text-right float-right w-48 text-center">
-                  <p className="mb-16">Petugas Penanggung Jawab,</p>
-                  <p className="font-bold underline uppercase">Administrator Sistem</p>
-                  <p className="text-xs mt-1">SIHAJI PRO</p>
+                  <p className="mb-16 font-medium">Tertanda,</p>
+                  <p className="font-bold uppercase">Ketua Kloter 18 KAL-BAR</p>
+                  <p className="text-sm mt-2 font-bold underline uppercase">{appConfig.signatoryName || '........................'}</p>
                 </div>
               </div>
             </div>
@@ -1237,9 +1289,19 @@ Wassalamualaikum warahmatullahi wabarakatuh.`}
             <h3 className="text-xl font-extrabold mb-4">Pengaturan Branding Admin</h3>
             <div className="space-y-4">
               <input className="w-full border rounded-xl p-3" placeholder="Nama aplikasi" value={appConfig.appName} onChange={(e) => setAppConfig({...appConfig, appName: e.target.value})} />
+              <input className="w-full border rounded-xl p-3" placeholder="Nama lengkap admin" value={appConfig.fullName} onChange={(e) => setAppConfig({...appConfig, fullName: e.target.value})} />
+              <input className="w-full border rounded-xl p-3" placeholder="Username admin" value={appConfig.username} onChange={(e) => setAppConfig({...appConfig, username: e.target.value})} />
+              <input type="password" className="w-full border rounded-xl p-3" placeholder="Password admin" value={appConfig.password} onChange={(e) => setAppConfig({...appConfig, password: e.target.value})} />
+              <input className="w-full border rounded-xl p-3" placeholder="Nama Penandatangan PDF" value={appConfig.signatoryName} onChange={(e) => setAppConfig({...appConfig, signatoryName: e.target.value})} />
               <input className="w-full border rounded-xl p-3" placeholder="URL Logo Header" value={appConfig.headerLogo} onChange={(e) => setAppConfig({...appConfig, headerLogo: e.target.value})} />
               <input className="w-full border rounded-xl p-3" placeholder="URL Logo Login" value={appConfig.loginLogo} onChange={(e) => setAppConfig({...appConfig, loginLogo: e.target.value})} />
-              <button onClick={() => { localStorage.setItem('sihaji_config', JSON.stringify(appConfig)); modernAlert('success', 'Pengaturan tersimpan', 'Branding aplikasi berhasil diperbarui.'); }} className="bg-gray-900 text-white px-5 py-3 rounded-xl font-bold">
+              <input className="w-full border rounded-xl p-3" placeholder="URL Foto Profil Admin" value={appConfig.adminPhoto} onChange={(e) => setAppConfig({...appConfig, adminPhoto: e.target.value})} />
+              {appConfig.adminPhoto && <img src={appConfig.adminPhoto} className="w-32 h-32 rounded-2xl object-cover border" />}
+              <button onClick={() => {
+                localStorage.setItem('sihaji_config', JSON.stringify(appConfig));
+                if (typeof google !== 'undefined' && google.script) google.script.run.saveAppSettingsServer(appConfig);
+                modernAlert('success', 'Pengaturan tersimpan', 'Branding aplikasi berhasil diperbarui.');
+              }} className="bg-gray-900 text-white px-5 py-3 rounded-xl font-bold">
                 Simpan Pengaturan
               </button>
               <button onClick={() => {

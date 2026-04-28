@@ -358,8 +358,35 @@ function saveNewPjServer(newPjObj) {
 // 5. SISTEM LOGIN DUMMY
 // ==========================================
 function verifyLoginServer(username, password) {
-  if (username === 'admin' && password === 'admin123') {
-    return { success: true };
+  const props = PropertiesService.getScriptProperties();
+  const appSettings = JSON.parse(props.getProperty('APP_SETTINGS') || '{}');
+  const savedUser = appSettings.username || 'admin';
+  const savedPass = appSettings.password || 'admin123';
+  if (username === savedUser && password === savedPass) {
+    return { success: true, role: 'admin', fullName: appSettings.fullName || 'Administrator' };
+  }
+  if (username === 'viewer' && password === 'viewer123') {
+    return { success: true, role: 'viewer', fullName: 'Viewer Dashboard' };
   }
   return { success: false, message: 'Username atau password salah!' };
+}
+
+function getAppSettingsServer() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const appSettings = JSON.parse(props.getProperty('APP_SETTINGS') || '{}');
+    return { success: true, data: appSettings };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+function saveAppSettingsServer(settings) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    props.setProperty('APP_SETTINGS', JSON.stringify(settings || {}));
+    return { success: true, message: 'Pengaturan aplikasi disimpan.' };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
 }

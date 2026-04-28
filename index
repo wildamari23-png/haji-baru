@@ -111,6 +111,8 @@ function App() {
   const [namaKegiatan, setNamaKegiatan] = useState('');
   const [presensiSelected, setPresensiSelected] = useState([]);
   const [hidePresensiForm, setHidePresensiForm] = useState(false);
+  const [presensiFilterTanggal, setPresensiFilterTanggal] = useState('');
+  const [presensiSearchNama, setPresensiSearchNama] = useState('');
   
   // PJ Modal State
   const [showPjModal, setShowPjModal] = useState(false);
@@ -178,6 +180,12 @@ function App() {
           if (res?.success && Array.isArray(res.data) && res.data.length > 0) setPjList(res.data);
         })
         .getPjDataServer();
+
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (res?.success && Array.isArray(res.data)) setPresensiData(res.data);
+        })
+        .getPresensiDataServer();
     } else {
       setJamaahData(initialJamaah);
       setPresensiSelected(initialJamaah.map(j => j.id));
@@ -603,6 +611,9 @@ function App() {
     j.paspor.toLowerCase().includes(searchTerm.toLowerCase())
   );
   const filteredPresensiJamaah = regionFiltered(jamaahAktif);
+  const filteredPresensiData = presensiData
+    .filter(p => !presensiFilterTanggal || p.tanggal === presensiFilterTanggal)
+    .filter(p => !presensiSearchNama || p.nama.toLowerCase().includes(presensiSearchNama.toLowerCase()));
 
   // --- RENDER MAIN LAYOUT ---
   return (
@@ -876,11 +887,14 @@ function App() {
                  <p>Jemaah yang <strong>TIDAK DICENTANG</strong> otomatis dianggap absen dan datanya <strong>tidak disimpan</strong> ke rincian Laporan Presensi Kegiatan.</p>
               </div>
 
-              <div className="p-4 border-b border-gray-100 bg-white">
+              <div className="p-4 border-b border-gray-100 bg-white flex justify-between items-center gap-3">
                 <select value={selectedKabupaten} onChange={(e) => setSelectedKabupaten(e.target.value)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold outline-none">
                   <option value="SEMUA">Filter Kabupaten/Kota: Semua</option>
                   {lokasiAsalList.map((k) => <option key={k} value={k}>{k}</option>)}
                 </select>
+                <button onClick={openPjModal} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-green-500/30 hover:scale-105 transition-transform flex items-center gap-2">
+                   <i className="fa-solid fa-floppy-disk"></i> Simpan Presensi Kegiatan
+                </button>
               </div>
 
               <div className="p-0">
@@ -932,9 +946,7 @@ function App() {
                  <div className="text-sm font-bold text-gray-600">
                     Total Filter: {filteredPresensiJamaah.length} | Akan Masuk Laporan: <span className="text-green-600">{presensiSelected.filter(id => filteredPresensiJamaah.some(j => j.id === id)).length}</span>
                  </div>
-                 <button onClick={openPjModal} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-green-500/30 hover:scale-105 transition-transform flex items-center gap-2">
-                    <i className="fa-solid fa-floppy-disk"></i> Simpan Presensi Kegiatan
-                 </button>
+                 
               </div>
             </div>}
             
@@ -946,8 +958,13 @@ function App() {
                    <i className="fa-solid fa-file-pdf"></i> Preview & Download PDF
                  </button>
                </div>
+
+               <div className="flex flex-col md:flex-row gap-3 mb-4">
+                 <input type="date" value={presensiFilterTanggal} onChange={(e) => setPresensiFilterTanggal(e.target.value)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold outline-none" />
+                 <input type="text" placeholder="Cari nama jemaah..." value={presensiSearchNama} onChange={(e) => setPresensiSearchNama(e.target.value)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold outline-none flex-1" />
+               </div>
                
-               {presensiData.length === 0 ? (
+               {filteredPresensiData.length === 0 ? (
                  <div className="p-12 text-center border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 bg-gray-50">
                     <i className="fa-regular fa-folder-open text-5xl mb-4 text-gray-300"></i>
                     <p className="font-medium">Belum ada data kehadiran (IKUT) yang disimpan.</p>
@@ -965,7 +982,7 @@ function App() {
                           </tr>
                        </thead>
                        <tbody className="divide-y divide-gray-100">
-                          {presensiData.slice().reverse().map((p, idx) => (
+                          {filteredPresensiData.slice().reverse().map((p, idx) => (
                              <tr key={idx} className="hover:bg-gray-50">
                                 <td className="p-3">
                                    <div className="font-bold text-gray-800">{p.tanggal}</div>

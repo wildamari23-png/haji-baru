@@ -159,6 +159,45 @@ function requestDriveAccessServer() {
 // ==========================================
 // 2. PRESENSI KEGIATAN
 // ==========================================
+function getPresensiDataServer() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('PRESENSI_KEGIATAN');
+    if (!sheet) return { success: true, data: [] };
+
+    const data = sheet.getDataRange().getValues();
+    if (!data || data.length <= 1) return { success: true, data: [] };
+    const headers = data[0];
+    const rows = data.slice(1);
+
+    const formatted = rows.map((row) => {
+      const obj = {};
+      headers.forEach((h, i) => obj[String(h).trim()] = row[i]);
+      const tanggalRaw = obj['TANGGAL'];
+      const tanggal = tanggalRaw instanceof Date
+        ? Utilities.formatDate(tanggalRaw, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+        : String(tanggalRaw || '');
+      return {
+        id: obj['ID'] || '',
+        tanggal,
+        paspor: obj['NO_PASPORT'] || '',
+        nama: obj['NAMA_LENGKAP'] || '',
+        gender: obj['GENDER'] || '',
+        umur: obj['UMUR'] || '',
+        provinsi: obj['PROVINSI'] || '',
+        asal: obj['KABUPATEN'] || '',
+        statusKehadiran: obj['STATUS KEHADIRAN'] || '',
+        kegiatan: obj['KEGIATAN'] || '',
+        pj: obj['PJ'] || '',
+        noHpPj: obj['NO_HP_PJ'] || ''
+      };
+    });
+    return { success: true, data: formatted };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
 function savePresensiServer(presensiList) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();

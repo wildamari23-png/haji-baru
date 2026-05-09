@@ -52,6 +52,7 @@ function getJamaahDataServer() {
 
           latestStatusMap[id].push({
             status: item['STATUS'] || 'SEHAT',
+            kegiatan: item['KEGIATAN'] || '',
             catatan: item['DIAGNOSA_SAKIT'] || item['LOKASI PEMAKAMAN'] || '',
             waktu: tanggalText,
             linkSertifikat: item['LINK_SERTIFIKAT_KEMATIAN'] || '',
@@ -81,6 +82,7 @@ function getJamaahDataServer() {
         umur: obj['UMUR'] || '',
         asal: obj['KABUPATEN'] || '',
         status: last ? last.status : 'SEHAT',
+        kegiatan: last ? last.kegiatan : '',
         diagnosa: last ? last.catatan : '',
         lokasiRawat: last ? last.lokasiRawat : '',
         lokasiPemakaman: last ? last.lokasiPemakaman : '',
@@ -260,7 +262,7 @@ function saveBulkStatusServer(updatedItems) {
       'KALIMANTAN BARAT', // Hardcode provinsi asal
       item.asal,
       item.status,
-      'UPDATE STATUS HARIAN',
+      item.kegiatan || 'UPDATE STATUS HARIAN',
       item.diagnosa || '',
       item.lokasiRawat || '',
       item.lokasiPemakaman || '',

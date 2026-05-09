@@ -113,6 +113,7 @@ function App() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkStatus, setBulkStatus] = useState('SEHAT');
   const [bulkDetails, setBulkDetails] = useState({ diagnosa: '', lokasi: '', linkSertifikat: '', certificateFile: null });
+  const [statusKegiatan, setStatusKegiatan] = useState('');
   const [selectedKabupaten, setSelectedKabupaten] = useState('SEMUA');
   const [selectedJamaah, setSelectedJamaah] = useState(null);
   const [isEditingJamaah, setIsEditingJamaah] = useState(false);
@@ -279,6 +280,11 @@ function App() {
 
   // --- BULK UPDATE STATUS JEMAAH ---
   const handleBulkUpdate = async () => {
+    if (!statusKegiatan.trim()) {
+      Swal.fire('Nama kegiatan wajib diisi', 'Isi atau pilih nama kegiatan di tab Presensi Harian sebelum update status.', 'warning');
+      return;
+    }
+
     if (bulkStatus === 'MENINGGAL' && bulkDetails.certificateFile && typeof google !== 'undefined' && google.script) {
       showLoadingAlert('Upload sertifikat kematian...');
       try {
@@ -332,6 +338,7 @@ function App() {
         const updatedItem = { 
           ...j, 
           status: bulkStatus,
+          kegiatan: statusKegiatan.trim(),
           diagnosa: bulkStatus === 'SAKIT' ? bulkDetails.diagnosa : '',
           lokasiRawat: bulkStatus === 'SAKIT' ? bulkDetails.lokasi : '',
           lokasiPemakaman: bulkStatus === 'MENINGGAL' ? bulkDetails.lokasi : '',
@@ -339,6 +346,7 @@ function App() {
           updatedAt: new Date().toISOString(),
           statusHistory: [...history, {
             status: bulkStatus,
+            kegiatan: statusKegiatan.trim(),
             catatan: bulkStatus === 'SAKIT' ? bulkDetails.diagnosa : bulkDetails.lokasi,
             waktu: new Date().toISOString(),
             linkSertifikat: bulkStatus === 'MENINGGAL' ? finalLink : ''
@@ -713,6 +721,13 @@ function App() {
     .filter(p => !presensiFilterTanggal || p.tanggal === presensiFilterTanggal)
     .filter(p => !presensiSearchNama || p.nama.toLowerCase().includes(presensiSearchNama.toLowerCase()));
   const latestPresensi = presensiData.length > 0 ? presensiData[presensiData.length - 1] : null;
+  const statusKegiatanOptions = Array.from(new Set([
+    ...jamaahData.flatMap(j => (j.statusHistory || []).map(h => h.kegiatan).filter(Boolean)),
+    ...jamaahData.map(j => j.kegiatan).filter(Boolean),
+    ...presensiData.map(p => p.kegiatan).filter(Boolean),
+    statusKegiatan
+  ].filter(Boolean))).slice(-25).reverse();
+  const latestStatusKegiatan = statusKegiatan || statusKegiatanOptions[0] || '-';
 
   // --- RENDER MAIN LAYOUT ---
   return (
@@ -866,8 +881,8 @@ function App() {
                   {selectedIds.length > 0 && (
                     <>
                       <button 
-                        onClick={() => setShowBulkModal(true)}
-                        className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-5 py-3 rounded-2xl text-sm font-bold shadow-lg shadow-orange-500/30 transition-all"
+                        onClick={() => statusKegiatan.trim() ? setShowBulkModal(true) : Swal.fire('Nama kegiatan wajib diisi', 'Isi/pilih nama kegiatan terlebih dahulu sebelum update status.', 'warning')}
+                        className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold shadow-lg transition-all ${statusKegiatan.trim() ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-orange-500/30' : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-gray-200'}`}
                       >
                         <i className="fa-solid fa-pen-to-square"></i> Update Status ({selectedIds.length})
                       </button>
@@ -884,8 +899,25 @@ function App() {
                   </button>
                 </div>
               </div>
-              <div>
-                <select value={selectedKabupaten} onChange={(e) => setSelectedKabupaten(e.target.value)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold outline-none">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 items-end">
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl p-3">
+                  <label className="block text-xs font-black text-emerald-700 uppercase tracking-wide mb-2">Nama Kegiatan Update Status <span className="text-red-500">*</span></label>
+                  <div className="relative">
+                    <i className="fa-solid fa-clipboard-list absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500"></i>
+                    <input
+                      list="status-kegiatan-options"
+                      value={statusKegiatan}
+                      onChange={(e) => setStatusKegiatan(e.target.value)}
+                      placeholder="Ketik/pilih kegiatan, contoh: Visitasi Harian Sektor 5"
+                      className="w-full pl-11 pr-4 py-3 rounded-xl border border-emerald-100 bg-white font-semibold outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                    <datalist id="status-kegiatan-options">
+                      {statusKegiatanOptions.map((k) => <option key={k} value={k} />)}
+                    </datalist>
+                  </div>
+                  <p className="mt-2 text-[11px] text-emerald-700"><i className="fa-solid fa-circle-info mr-1"></i>Nama kegiatan wajib sebelum update status dan otomatis tersimpan ke kolom J (KEGIATAN).</p>
+                </div>
+                <select value={selectedKabupaten} onChange={(e) => setSelectedKabupaten(e.target.value)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold outline-none h-[46px]">
                   <option value="SEMUA">Filter Kabupaten/Kota: Semua</option>
                   {lokasiAsalList.map((k) => <option key={k} value={k}>{k}</option>)}
                 </select>
@@ -1225,6 +1257,7 @@ function App() {
 Tanggal: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
 
 🧭 *Ringkasan Kegiatan:*
+Nama Kegiatan: ${latestStatusKegiatan}
 1. JUMLAH JEMAAH TERDATA: ${jamaahData.length} orang
 
 🗺️ *Rincian per Kabupaten/Kota:*
@@ -1276,6 +1309,7 @@ Wassalamualaikum warahmatullahi wabarakatuh.`}
                 <div className="text-center border-b-[3px] border-double border-gray-800 pb-4 mb-6">
                   <h1 className="text-xl font-bold uppercase tracking-widest">Laporan Harian Status Jemaah Haji</h1>
                   <p className="mt-1">Tanggal Rilis: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className="font-bold uppercase mt-1">Kegiatan: {latestStatusKegiatan}</p>
                 </div>
                 
                 <h3 className="font-bold text-md mb-3 bg-gray-100 p-1">A. REKAPITULASI DATA GLOBAL</h3>
@@ -1312,7 +1346,7 @@ Wassalamualaikum warahmatullahi wabarakatuh.`}
                         <td className="border border-gray-800 p-2 font-bold">{j.nama} <br/><span className="font-normal text-[10px]">({j.umur} Thn / {j.gender})</span></td>
                         <td className="border border-gray-800 p-2 text-center">{j.paspor} <br/><span className="text-[10px] font-bold">{j.asal}</span></td>
                         <td className="border border-gray-800 p-2 text-center font-bold uppercase">{j.status}</td>
-                        <td className="border border-gray-800 p-2 italic">{j.diagnosa ? `Diagnosa: ${j.diagnosa}. Lokasi: ${j.lokasiRawat}` : (j.lokasiPemakaman ? `Pemakaman: ${j.lokasiPemakaman}` : '-')}</td>
+                        <td className="border border-gray-800 p-2 italic"><b>Kegiatan:</b> {j.kegiatan || latestStatusKegiatan || '-'}<br/>{j.diagnosa ? `Diagnosa: ${j.diagnosa}. Lokasi: ${j.lokasiRawat}` : (j.lokasiPemakaman ? `Pemakaman: ${j.lokasiPemakaman}` : '-')}</td>
                       </tr>
                     ))}
                     {jamaahData.filter(j => j.status !== 'SEHAT').length === 0 && (
@@ -1511,6 +1545,12 @@ Wassalamualaikum warahmatullahi wabarakatuh.`}
               <button onClick={() => setShowBulkModal(false)} className="hover:bg-black/20 p-2 rounded-full transition-colors"><i className="fa-solid fa-xmark"></i></button>
             </div>
             <div className="p-6 space-y-5">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                <div className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Kegiatan Kolom J</div>
+                <div className="font-extrabold text-emerald-900 flex items-center gap-2"><i className="fa-solid fa-clipboard-check"></i>{statusKegiatan}</div>
+                <p className="text-[11px] text-emerald-700 mt-1">Nama kegiatan ini ikut disimpan bersama semua data terpilih.</p>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Pilih Status Baru</label>
                 <div className="relative">
